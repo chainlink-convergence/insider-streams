@@ -1,6 +1,3 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { formatDistanceToNowStrict, isPast } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -10,11 +7,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNowStrict, isPast } from "date-fns";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export type AuctionCardData = {
   auctionId: string;
   sellerAddress: string;
-  marketId: string;
+  eventId: string;
+  eventTitle: string;
   status: string;
   currentBidUsdc?: number;
   endTime?: string;
@@ -54,7 +55,7 @@ function getCardDescription(auction: AuctionCardData) {
     return `${auction.outcome === "yes" ? "Yes" : "No"} outcome on ${auction.title}.`;
   }
 
-  return `Seller ${shortenAddress(auction.sellerAddress)} competing in market #${auction.marketId}.`;
+  return `Seller ${shortenAddress(auction.sellerAddress)} competing in market #${auction.eventId}.`;
 }
 
 function MetaRail({ auction }: { auction: AuctionCardData }) {
@@ -66,7 +67,7 @@ function MetaRail({ auction }: { auction: AuctionCardData }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.24em] text-accent">
-        <span>{auction.marketplace ?? `Market #${auction.marketId}`}</span>
+        <span>{auction.marketplace ?? `Market #${auction.eventId}`}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={statusVariant}>{auction.status}</Badge>
@@ -94,7 +95,7 @@ function BidModule({ auction }: { auction: AuctionCardData }) {
           Market
         </p>
         <p className="mt-2 font-serif text-[1.8rem] leading-none font-medium tracking-[-0.05em] text-foreground">
-          #{auction.marketId}
+          #{auction.eventId}
         </p>
       </div>
     </div>

@@ -10,7 +10,7 @@ import {
   SettlementRequested as SettlementRequestedEvent,
   SettlementResponse as SettlementResponseEvent,
   SharesPurchased as SharesPurchasedEvent,
-  SharesRedeemed as SharesRedeemedEvent
+  SharesRedeemed as SharesRedeemedEvent,
 } from "../generated/ExamplePredictionMarket/ExamplePredictionMarket"
 import {
   EventCreated,
@@ -24,12 +24,12 @@ import {
   SettlementRequested,
   SettlementResponse,
   SharesPurchased,
-  SharesRedeemed
+  SharesRedeemed,
 } from "../generated/schema"
 
 export function handleEventCreated(event: EventCreatedEvent): void {
   let entity = new EventCreated(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.eventId = event.params.eventId
   entity.creator = event.params.creator
@@ -48,10 +48,10 @@ export function handleEventCreated(event: EventCreatedEvent): void {
 }
 
 export function handleExpectedAuthorUpdated(
-  event: ExpectedAuthorUpdatedEvent
+  event: ExpectedAuthorUpdatedEvent,
 ): void {
   let entity = new ExpectedAuthorUpdated(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.previousAuthor = event.params.previousAuthor
   entity.newAuthor = event.params.newAuthor
@@ -64,10 +64,10 @@ export function handleExpectedAuthorUpdated(
 }
 
 export function handleExpectedWorkflowIdUpdated(
-  event: ExpectedWorkflowIdUpdatedEvent
+  event: ExpectedWorkflowIdUpdatedEvent,
 ): void {
   let entity = new ExpectedWorkflowIdUpdated(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.previousId = event.params.previousId
   entity.newId = event.params.newId
@@ -80,10 +80,10 @@ export function handleExpectedWorkflowIdUpdated(
 }
 
 export function handleExpectedWorkflowNameUpdated(
-  event: ExpectedWorkflowNameUpdatedEvent
+  event: ExpectedWorkflowNameUpdatedEvent,
 ): void {
   let entity = new ExpectedWorkflowNameUpdated(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.previousName = event.params.previousName
   entity.newName = event.params.newName
@@ -96,10 +96,10 @@ export function handleExpectedWorkflowNameUpdated(
 }
 
 export function handleForwarderAddressUpdated(
-  event: ForwarderAddressUpdatedEvent
+  event: ForwarderAddressUpdatedEvent,
 ): void {
   let entity = new ForwarderAddressUpdated(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.previousForwarder = event.params.previousForwarder
   entity.newForwarder = event.params.newForwarder
@@ -113,7 +113,7 @@ export function handleForwarderAddressUpdated(
 
 export function handleLiquidityWithdrawn(event: LiquidityWithdrawnEvent): void {
   let entity = new LiquidityWithdrawn(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.eventId = event.params.eventId
   entity.creator = event.params.creator
@@ -127,10 +127,10 @@ export function handleLiquidityWithdrawn(event: LiquidityWithdrawnEvent): void {
 }
 
 export function handleOwnershipTransferred(
-  event: OwnershipTransferredEvent
+  event: OwnershipTransferredEvent,
 ): void {
   let entity = new OwnershipTransferred(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.previousOwner = event.params.previousOwner
   entity.newOwner = event.params.newOwner
@@ -144,7 +144,7 @@ export function handleOwnershipTransferred(
 
 export function handleSecurityWarning(event: SecurityWarningEvent): void {
   let entity = new SecurityWarning(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.message = event.params.message
 
@@ -156,10 +156,10 @@ export function handleSecurityWarning(event: SecurityWarningEvent): void {
 }
 
 export function handleSettlementRequested(
-  event: SettlementRequestedEvent
+  event: SettlementRequestedEvent,
 ): void {
   let entity = new SettlementRequested(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.eventId = event.params.eventId
   entity.question = event.params.question
@@ -173,7 +173,7 @@ export function handleSettlementRequested(
 
 export function handleSettlementResponse(event: SettlementResponseEvent): void {
   let entity = new SettlementResponse(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.eventId = event.params.eventId
   entity.status = event.params.status
@@ -188,7 +188,7 @@ export function handleSettlementResponse(event: SettlementResponseEvent): void {
 
 export function handleSharesPurchased(event: SharesPurchasedEvent): void {
   let entity = new SharesPurchased(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.eventId = event.params.eventId
   entity.buyer = event.params.buyer
@@ -205,7 +205,7 @@ export function handleSharesPurchased(event: SharesPurchasedEvent): void {
 
 export function handleSharesRedeemed(event: SharesRedeemedEvent): void {
   let entity = new SharesRedeemed(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
+    event.transaction.hash.concatI32(event.logIndex.toI32()),
   )
   entity.eventId = event.params.eventId
   entity.redeemer = event.params.redeemer

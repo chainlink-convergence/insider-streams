@@ -1,8 +1,8 @@
 import type { AuctionCardData } from "@/components/auction-card";
 import { graphqlClient } from "@/lib/graphql";
+import { getSecretsByAuctionIds, type EventData } from "@/lib/supabase/secrets";
 import { CONFIDENTIAL_USDC_DECIMALS } from "@private-streams/common";
 import { formatUnits } from "viem";
-import { getSecretsByAuctionIds, type EventData } from "@/lib/supabase/secrets";
 import { getSdk } from "../__generated__/sdk";
 
 const sdk = getSdk(graphqlClient);
@@ -78,7 +78,7 @@ export async function getHomepageAuctions({
     return {
       auctionId: String(a.auctionId),
       sellerAddress: String(a.sellerId),
-      marketId: String(a.eventId),
+      eventId: String(a.eventId),
       status: "Open",
       currentBidUsdc: latestBid
         ? Number(
@@ -104,7 +104,7 @@ export async function getHomepageAuctions({
     return {
       auctionId: String(a.auctionId),
       sellerAddress: String(a.sellerId),
-      marketId: String(a.eventId),
+      eventId: String(a.eventId),
       status: "Closed",
       currentBidUsdc: Number(
         formatUnits(BigInt(String(a.winningBid)), CONFIDENTIAL_USDC_DECIMALS),
