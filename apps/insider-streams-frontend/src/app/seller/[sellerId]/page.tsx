@@ -2,7 +2,13 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, User } from "lucide-react";
+import {
+  ArrowLeft,
+  TrendingDown,
+  TrendingUp,
+  Minus,
+  User,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +19,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { AuctionCard } from "@/components/auction-card";
 import { getSellerDetail } from "@/lib/seller-detail";
+import {
+  getReputationTier,
+  getAccuracyPercent,
+  formatScoreSigned,
+} from "@/lib/reputation";
+import { cn } from "@/lib/utils";
 
 type SellerPageProps = {
   params: Promise<{
@@ -25,6 +37,122 @@ const usdFormat = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0,
 });
+
+function SellerReputationSidebar({
+  reputationScore,
+  totalAuctions,
+  correct,
+  wrong,
+}: {
+  reputationScore: number;
+  totalAuctions: number;
+  correct: number;
+  wrong: number;
+}) {
+  const tierInfo = getReputationTier(reputationScore, totalAuctions);
+  const accuracy = getAccuracyPercent(correct, wrong);
+
+  return (
+    <Card className="border-border/90 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_96%,transparent),color-mix(in_srgb,var(--secondary)_28%,transparent))]">
+      <CardHeader className="pb-0">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
+            Reputation
+          </span>
+          <span
+            className={cn(
+              "text-[11px] font-medium uppercase tracking-[0.16em]",
+              tierInfo.colorClass,
+            )}
+          >
+            {tierInfo.label}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p
+          className={cn(
+            "mt-3 font-serif text-[3.2rem] leading-none font-medium tracking-[-0.06em]",
+            tierInfo.scoreColorClass,
+          )}
+        >
+          {formatScoreSigned(reputationScore)}
+        </p>
+
+        {accuracy !== null && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Accuracy</span>
+              <span className="font-medium">{accuracy}%</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-rose-500/20">
+              <div
+                className="h-full rounded-full bg-emerald-500/70 transition-all"
+                style={{
+                  width: `${correct + wrong > 0 ? (correct / (correct + wrong)) * 100 : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        <Separator className="my-5" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/60">
+              Correct
+            </span>
+            <p className="text-sm font-medium text-emerald-400">
+              {correct}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/60">
+              Wrong
+            </span>
+            <p className="text-sm font-medium text-rose-400">
+              {wrong}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SellerTierBadge({
+  score,
+  totalAuctions,
+}: {
+  score: number;
+  totalAuctions: number;
+}) {
+  const tierInfo = getReputationTier(score, totalAuctions);
+  const ScoreIcon =
+    score > 0 ? TrendingUp : score < 0 ? TrendingDown : Minus;
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold tracking-wide",
+          tierInfo.badgeBg,
+        )}
+      >
+        <ScoreIcon className="size-3.5" />
+        {formatScoreSigned(score)}
+      </span>
+      <span
+        className={cn(
+          "text-xs font-medium uppercase tracking-[0.16em]",
+          tierInfo.colorClass,
+        )}
+      >
+        {tierInfo.label}
+      </span>
+    </span>
+  );
+}
 
 function StatCard({
   label,
@@ -74,15 +202,22 @@ export default async function SellerPage({ params }: SellerPageProps) {
             <span>Seller profile</span>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex size-12 items-center justify-center rounded-full bg-accent/15 text-accent">
+            <div
+              className={cn(
+                "flex size-12 items-center justify-center rounded-full ring-2",
+                getReputationTier(seller.reputationScore, seller.totalAuctionCount).ringClass,
+                "bg-accent/15 text-accent",
+              )}
+            >
               <User className="size-5" />
             </div>
             <h1 className="min-w-0 break-all font-serif text-[2.4rem] leading-[0.92] font-medium tracking-[-0.04em] text-foreground sm:text-[3rem]">
               {seller.sellerId}
             </h1>
-            <Badge variant="outline" className="text-xs">
-              Rep: {seller.reputationScore}
-            </Badge>
+            <SellerTierBadge
+              score={seller.reputationScore}
+              totalAuctions={seller.totalAuctionCount}
+            />
           </div>
         </header>
 
@@ -120,37 +255,12 @@ export default async function SellerPage({ params }: SellerPageProps) {
           </div>
 
           <aside className="flex flex-col gap-6 lg:sticky lg:top-8 lg:self-start">
-            <Card className="border-border/90 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_96%,transparent),color-mix(in_srgb,var(--secondary)_28%,transparent))]">
-              <CardHeader className="pb-0">
-                <span className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
-                  Reputation
-                </span>
-              </CardHeader>
-              <CardContent>
-                <p className="mt-3 font-serif text-[3.2rem] leading-none font-medium tracking-[-0.06em] text-foreground">
-                  {seller.reputationScore}
-                </p>
-                <Separator className="my-5" />
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/60">
-                      Correct
-                    </span>
-                    <p className="text-sm font-medium text-foreground">
-                      {seller.correctPredictions}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/60">
-                      Wrong
-                    </span>
-                    <p className="text-sm font-medium text-foreground">
-                      {seller.wrongPredictions}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <SellerReputationSidebar
+              reputationScore={seller.reputationScore}
+              totalAuctions={seller.totalAuctionCount}
+              correct={seller.correctPredictions}
+              wrong={seller.wrongPredictions}
+            />
 
             <Card className="border-border/70 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_98%,transparent),color-mix(in_srgb,var(--secondary)_18%,transparent))]">
               <CardHeader className="pb-0">

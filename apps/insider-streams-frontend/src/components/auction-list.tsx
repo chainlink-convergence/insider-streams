@@ -27,11 +27,12 @@ type AuctionListProps = {
 };
 
 type AuctionFilterMode = "auto" | "open" | "all";
-type AuctionSortMode = "created" | "bid";
+type AuctionSortMode = "created" | "bid" | "reputation";
 
 const SORT_OPTIONS: { mode: AuctionSortMode; label: string }[] = [
   { mode: "created", label: "Recently created" },
   { mode: "bid", label: "Recently bid on" },
+  { mode: "reputation", label: "Seller reputation" },
 ];
 
 export function AuctionList({ className }: AuctionListProps) {
@@ -41,7 +42,12 @@ export function AuctionList({ className }: AuctionListProps) {
   const { seller, getBid, registerVisibleAuctions, unregisterVisibleAuctions } =
     usePrivateData();
 
-  const orderBy = sortMode === "bid" ? "currentBid" : "blockTimestamp";
+  const orderBy =
+    sortMode === "bid"
+      ? "currentBid"
+      : sortMode === "reputation"
+        ? "seller__reputationScore"
+        : "blockTimestamp";
 
   const openAuctionsQuery = useQuery(HomepageAuctionsDocument, {
     variables: {

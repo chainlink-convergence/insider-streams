@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatDistanceToNowStrict, isPast } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,6 +26,11 @@ import { formatUnits } from "viem";
 import { PredictionMarketLink } from "@/components/prediction-market-link";
 import { cn } from "@/lib/utils";
 import type { PrivateBidRecord } from "@/lib/private-data/types";
+import {
+  getReputationTier,
+  getAccuracyPercent,
+  formatScoreSigned,
+} from "@/lib/reputation";
 
 export type AuctionCardData = {
   auctionId: string;
@@ -160,43 +165,96 @@ function BidModule({ auction }: { auction: AuctionCardData }) {
   );
 }
 
+function AccuracyBar({ correct, wrong }: { correct: number; wrong: number }) {
+  const total = correct + wrong;
+  if (total === 0) return null;
+  const correctPct = (correct / total) * 100;
+
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-rose-500/20">
+      <div
+        className="h-full rounded-full bg-emerald-500/70 transition-all"
+        style={{ width: `${correctPct}%` }}
+      />
+    </div>
+  );
+}
+
 function ReputationBadge({ auction }: { auction: AuctionCardData }) {
   if (auction.sellerReputationScore === undefined) return null;
 
+  const score = auction.sellerReputationScore;
   const correct = auction.sellerCorrectPredictions ?? 0;
   const wrong = auction.sellerWrongPredictions ?? 0;
   const total = auction.sellerTotalAuctions ?? 0;
+  const tierInfo = getReputationTier(score, total);
+  const accuracy = getAccuracyPercent(correct, wrong);
+
+  const ScoreIcon =
+    score > 0 ? TrendingUp : score < 0 ? TrendingDown : Minus;
 
   return (
-    <TooltipProvider delayDuration={1000}>
+    <TooltipProvider delayDuration={400}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="relative z-20">
-            <Badge variant="outline" className="cursor-default text-[10px]">
-              Rep: {auction.sellerReputationScore}
-            </Badge>
+          <span className="relative z-20 inline-flex items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide",
+                tierInfo.badgeBg,
+              )}
+            >
+              <ScoreIcon className="size-3" />
+              {formatScoreSigned(score)}
+            </span>
+            <span
+              className={cn(
+                "text-[10px] font-medium uppercase tracking-[0.18em]",
+                tierInfo.colorClass,
+              )}
+            >
+              {tierInfo.label}
+            </span>
           </span>
         </TooltipTrigger>
         <TooltipContent
           side="bottom"
-          className="w-48 space-y-2 bg-popover px-4 py-3 text-popover-foreground shadow-lg"
+          className="w-52 space-y-3 bg-popover px-4 py-3 text-popover-foreground shadow-lg"
         >
-          <p className="text-xs font-medium">Seller reputation</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium">Seller reputation</p>
+            <span
+              className={cn(
+                "text-sm font-semibold",
+                tierInfo.scoreColorClass,
+              )}
+            >
+              {formatScoreSigned(score)}
+            </span>
+          </div>
+          {accuracy !== null && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">Accuracy</span>
+                <span className="font-medium">{accuracy}%</span>
+              </div>
+              <AccuracyBar correct={correct} wrong={wrong} />
+            </div>
+          )}
           <div className="space-y-1 text-[11px]">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Correct</span>
-              <span className="font-medium">{correct}</span>
+              <span className="font-medium text-emerald-400">{correct}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Wrong</span>
-              <span className="font-medium">{wrong}</span>
+              <span className="font-medium text-rose-400">{wrong}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total auctions</span>
               <span className="font-medium">{total}</span>
             </div>
           </div>
-          {/* TODO: Replace with pie chart visualization */}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
