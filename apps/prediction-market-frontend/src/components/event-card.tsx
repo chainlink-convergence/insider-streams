@@ -1,120 +1,102 @@
+"use client";
+
+import Link from "next/link";
 import type { PredictionEventsQuery } from "@/__generated__/graphql";
+import { DualProgress } from "@/components/ui/progress";
+import { OutcomeBadge } from "@/components/outcome-badge";
+import { StatusBadge } from "@/components/status-badge";
+import { Countdown } from "@/components/countdown";
+import { type EventVolume, getEventStatus } from "@/lib/market-utils";
+import { formatUsdc } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { Clock, Users, BarChart3 } from "lucide-react";
 
 type EventCreatedItem = PredictionEventsQuery["eventCreateds"][number];
-type SettlementResponseItem = PredictionEventsQuery["settlementResponses"][number];
+type SettlementResponseItem =
+  PredictionEventsQuery["settlementResponses"][number];
+type SettlementRequestedItem =
+  PredictionEventsQuery["settlementRequesteds"][number];
 
 type EventCardProps = {
   event: EventCreatedItem;
   settlement?: SettlementResponseItem;
-  href?: string;
+  settlementRequest?: SettlementRequestedItem;
+  volume: EventVolume;
+  href: string;
 };
 
-// Contract: enum Outcome { None=0, No=1, Yes=2, Inconclusive=3 }
-function outcomeLabel(outcome: number): string {
-  switch (outcome) {
-    case 1:
-      return "No";
-    case 2:
-      return "Yes";
-    case 3:
-      return "Inconclusive";
-    default:
-      return "Unknown";
-  }
-}
+export function EventCard({
+  event,
+  settlement,
+  settlementRequest,
+  volume,
+  href,
+}: EventCardProps) {
+  const status = getEventStatus(event, settlement, settlementRequest);
+  const closeTime = Number(event.eventClose);
+  const hasTrades = volume.yesPercent !== null;
 
-function outcomeBadgeClass(outcome: number): string {
-  switch (outcome) {
-    case 2:
-      return "bg-green-500/20 text-green-400 border-green-500/30";
-    case 1:
-      return "bg-red-500/20 text-red-400 border-red-500/30";
-    case 3:
-      return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-    default:
-      return "bg-gray-500/20 text-gray-400 border-gray-500/30";
-  }
-}
+  return (
+    <Link href={href} className="group block">
+      <div
+        className={cn(
+          "flex h-full flex-col rounded-[calc(var(--radius)+4px)] border bg-card p-5 transition-all duration-200",
+          "hover:border-accent/25 hover:bg-card/90 hover:shadow-[0_8px_32px_rgba(91,138,240,0.06)]",
+          status === "open" && "border-accent/10",
+        )}
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <h3 className="line-clamp-2 text-[0.9rem] font-semibold leading-snug text-card-foreground group-hover:text-foreground">
+            {event.question}
+          </h3>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {settlement && <OutcomeBadge outcome={settlement.outcome} />}
+            <StatusBadge status={status} />
+          </div>
+        </div>
 
-function statusLabel(event: EventCreatedItem, settlement?: SettlementResponseItem): string {
-  if (settlement) return "Settled";
-  const closeTime = Number(event.eventClose) * 1000;
-  if (Date.now() > closeTime) return "Closed";
-  return "Open";
-}
+        {hasTrades && volume.yesPercent !== null && (
+          <div className="mb-3.5">
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="font-medium text-emerald-400">
+                ${formatUsdc(volume.yesUsdc)} Yes
+              </span>
+              <span className="font-medium text-rose-400">
+                No ${formatUsdc(volume.noUsdc)}
+              </span>
+            </div>
+            <DualProgress yesPercent={volume.yesPercent} />
+          </div>
+        )}
 
-function statusBadgeClass(status: string): string {
-  switch (status) {
-    case "Open":
-      return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    case "Closed":
-      return "bg-gray-500/20 text-gray-400 border-gray-500/30";
-    case "Settled":
-      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
-    default:
-      return "bg-gray-500/20 text-gray-400 border-gray-500/30";
-  }
-}
+        {!hasTrades && (
+          <div className="mb-3.5 flex h-[30px] items-center text-xs text-muted-foreground/60">
+            No trades yet
+          </div>
+        )}
 
-function formatDate(unixSeconds: string): string {
-  return new Date(Number(unixSeconds) * 1000).toLocaleString();
-}
-
-function shortenAddress(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-export function EventCard({ event, settlement, href }: EventCardProps) {
-  const status = statusLabel(event, settlement);
-
-  const content = (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-5 transition-colors hover:border-gray-600 hover:bg-gray-750">
-      {/* Header: question + badges */}
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold leading-snug text-white">
-          {event.question}
-        </h3>
-        <div className="flex shrink-0 items-center gap-2">
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(status)}`}
-          >
-            {status}
+        <div className="mt-auto flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <BarChart3 className="size-3" />
+            ${formatUsdc(volume.totalUsdc)}
           </span>
-          {settlement && (
-            <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${outcomeBadgeClass(settlement.outcome)}`}
-            >
-              {outcomeLabel(settlement.outcome)}
+          <span className="inline-flex items-center gap-1">
+            <Users className="size-3" />
+            {volume.traderCount}
+          </span>
+          {status === "open" && closeTime > 0 && (
+            <span className="ml-auto inline-flex items-center gap-1 text-accent/80">
+              <Clock className="size-3" />
+              <Countdown targetUnix={closeTime} />
+            </span>
+          )}
+          {status !== "open" && (
+            <span className="ml-auto text-muted-foreground/60">
+              #{event.eventId}
             </span>
           )}
         </div>
       </div>
-
-      {/* Meta row */}
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-400">
-        <span>Event #{event.eventId}</span>
-        <span>Creator: {shortenAddress(event.creator)}</span>
-        <span>Created: {formatDate(event.blockTimestamp)}</span>
-        {event.eventClose !== "0" && (
-          <span>Closes: {formatDate(event.eventClose)}</span>
-        )}
-      </div>
-
-      {/* Settlement info */}
-      {settlement && (
-        <div className="mt-3 rounded-md border border-gray-700 bg-gray-900/50 px-3 py-2 text-xs text-gray-300">
-          Settled at {formatDate(settlement.blockTimestamp)} &mdash; Outcome:{" "}
-          <span className="font-semibold text-white">
-            {outcomeLabel(settlement.outcome)}
-          </span>
-        </div>
-      )}
-    </div>
+    </Link>
   );
-
-  if (href) {
-    return <a href={href} className="block">{content}</a>;
-  }
-
-  return content;
 }

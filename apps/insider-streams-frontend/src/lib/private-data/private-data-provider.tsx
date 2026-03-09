@@ -18,6 +18,12 @@ import type {
 import { fetchMySeller, fetchMyBids, fetchMySecrets } from "./api";
 import { useSignedWalletSession } from "@/lib/wallet/use-signed-wallet-session";
 
+type PrivateDataResourceErrors = {
+  seller: string | null;
+  bids: string | null;
+  secrets: string | null;
+};
+
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
@@ -27,6 +33,7 @@ export type PrivateDataContextValue = {
   isRevealed: boolean;
   isLoading: boolean;
   error: string | null;
+  resourceErrors: PrivateDataResourceErrors;
 
   // Data accessors
   seller: PrivateSellerRecord | null;
@@ -90,6 +97,11 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resourceErrors, setResourceErrors] = useState<PrivateDataResourceErrors>({
+    seller: null,
+    bids: null,
+    secrets: null,
+  });
 
   // ---- React Query: read cached data ---------------------------------
 
@@ -166,6 +178,7 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
 
       setIsLoading(true);
       setError(null);
+      setResourceErrors({ seller: null, bids: null, secrets: null });
 
       try {
         const { signature, timestamp } = await getSignedSession();
@@ -203,6 +216,20 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
         }
 
         // Collect errors from rejected promises
+        const nextResourceErrors = {
+          seller:
+            sellerResult.status === "rejected"
+              ? String(sellerResult.reason)
+              : null,
+          bids:
+            bidsResult.status === "rejected"
+              ? String(bidsResult.reason)
+              : null,
+          secrets:
+            secretsResult.status === "rejected"
+              ? String(secretsResult.reason)
+              : null,
+        };
         const errors: string[] = [];
         if (sellerResult.status === "rejected") {
           errors.push(`Seller: ${String(sellerResult.reason)}`);
@@ -217,6 +244,7 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
         if (errors.length > 0) {
           setError(errors.join("; "));
         }
+        setResourceErrors(nextResourceErrors);
 
         // 5. Mark as revealed even if some requests failed (partial data is OK)
         setIsRevealed(true);
@@ -225,6 +253,7 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
         const message =
           err instanceof Error ? err.message : "Failed to reveal private data";
         setError(message);
+        setResourceErrors({ seller: null, bids: null, secrets: null });
       } finally {
         setIsLoading(false);
       }
@@ -241,6 +270,7 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
       queryClient.removeQueries({ queryKey: ["private-secrets"] });
       setIsRevealed(false);
       setError(null);
+      setResourceErrors({ seller: null, bids: null, secrets: null });
       sessionAddressRef.current = null;
       return;
     }
@@ -252,6 +282,7 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
         queryClient.removeQueries({ queryKey: ["private-secrets"] });
         setIsRevealed(false);
         setError(null);
+        setResourceErrors({ seller: null, bids: null, secrets: null });
       }
       sessionAddressRef.current = address;
     }
@@ -263,6 +294,7 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
     isRevealed,
     isLoading,
     error,
+    resourceErrors,
     seller: sellerData ?? null,
     getBid,
     getSecretState,

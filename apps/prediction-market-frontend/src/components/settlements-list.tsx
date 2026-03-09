@@ -9,6 +9,12 @@ import {
   limit,
   getDocs,
 } from "firebase/firestore";
+import { Badge } from "@/components/ui/badge";
+import { EtherscanLink } from "@/components/etherscan-link";
+import { ZERO_TX_HASH } from "@/lib/market-utils";
+import { formatConfidenceBps } from "@/lib/format";
+import { formatAddress } from "@/lib/wallet/format-address";
+import { Bot, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface SettlementDoc {
   id: string;
@@ -21,22 +27,39 @@ interface SettlementDoc {
   createdAt: number;
 }
 
-const ITEMS_LIMIT = 10;
+const ITEMS_LIMIT = 20;
 
-function shortenHash(hash: string): string {
-  if (
-    hash ===
-    "0x0000000000000000000000000000000000000000000000000000000000000000"
-  ) {
-    return "0x00000... (simulated)";
+interface GeminiResponseShape {
+  answer?: unknown;
+  confidence?: unknown;
+  sources?: unknown;
+}
+
+function parseGeminiResponse(raw: string): GeminiResponseShape | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === "object" && parsed !== null) {
+      return parsed as GeminiResponseShape;
+    }
+    return null;
+  } catch {
+    return null;
   }
-  return `${hash.slice(0, 10)}...${hash.slice(-6)}`;
+}
+
+function getAnswer(gemini: GeminiResponseShape): string | null {
+  return typeof gemini.answer === "string" ? gemini.answer : null;
+}
+
+function getConfidenceBps(gemini: GeminiResponseShape): number | null {
+  return typeof gemini.confidence === "number" ? gemini.confidence : null;
 }
 
 export function SettlementsList() {
   const [docs, setDocs] = useState<SettlementDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDocs = async () => {
@@ -69,12 +92,12 @@ export function SettlementsList() {
       }
     };
 
-    fetchDocs();
+    void fetchDocs();
   }, []);
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
         {error}
       </div>
     );
@@ -86,7 +109,7 @@ export function SettlementsList() {
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="h-40 animate-pulse rounded-lg border border-gray-700 bg-gray-800"
+            className="h-32 animate-pulse rounded-[calc(var(--radius)+4px)] border bg-card"
           />
         ))}
       </div>
@@ -95,7 +118,7 @@ export function SettlementsList() {
 
   if (docs.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6 text-center text-sm text-gray-400">
+      <div className="rounded-[calc(var(--radius)+4px)] border bg-card p-8 text-center text-sm text-muted-foreground">
         No settlement records found.
       </div>
     );
@@ -104,45 +127,91 @@ export function SettlementsList() {
   return (
     <div className="space-y-4">
       {docs.map((doc) => {
-        let geminiParsed: string | null = null;
-        try {
-          geminiParsed = JSON.stringify(JSON.parse(doc.geminiResponse), null, 2);
-        } catch {
-          /* ignore */
-        }
+        const gemini = parseGeminiResponse(doc.geminiResponse);
+        const isExpanded = expandedId === doc.id;
+        const isSuccess = doc.statusCode === 1 || doc.statusCode === 200;
+        const answer = gemini ? getAnswer(gemini) : null;
+        const confidenceBps = gemini ? getConfidenceBps(gemini) : null;
+        const hasRealTx = doc.txHash !== ZERO_TX_HASH;
 
         return (
           <div
             key={doc.id}
-            className="rounded-lg border border-gray-700 bg-gray-800 p-5"
+            className="rounded-[calc(var(--radius)+4px)] border bg-card transition-colors"
           >
-            <div className="mb-2 flex items-start justify-between gap-3">
-              <h3 className="text-base font-semibold text-white">
-                {doc.question}
-              </h3>
-              <span
-                className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                  doc.statusCode === 1
-                    ? "border-green-500/30 bg-green-500/20 text-green-400"
-                    : "border-gray-500/30 bg-gray-500/20 text-gray-400"
-                }`}
+            <div className="p-5">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <h3 className="text-base font-semibold leading-snug text-card-foreground">
+                  {doc.question}
+                </h3>
+                <Badge
+                  variant="outline"
+                  className={
+                    isSuccess
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-[0.6rem] text-emerald-400"
+                      : "border-yellow-500/30 bg-yellow-500/10 text-[0.6rem] text-yellow-400"
+                  }
+                >
+                  {isSuccess ? (
+                    <CheckCircle2 className="size-2.5" />
+                  ) : (
+                    <AlertCircle className="size-2.5" />
+                  )}
+                  Status {doc.statusCode}
+                </Badge>
+              </div>
+
+              {answer && (
+                <div className="mb-3 flex gap-2 rounded-lg border bg-muted/20 p-3">
+                  <Bot className="mt-0.5 size-4 shrink-0 text-accent" />
+                  <p className="text-sm leading-relaxed text-foreground/90">
+                    {answer}
+                  </p>
+                </div>
+              )}
+
+              {confidenceBps !== null && (
+                <div className="mb-3 text-xs text-muted-foreground">
+                  AI Confidence:{" "}
+                  <span className="font-medium text-foreground">
+                    {formatConfidenceBps(confidenceBps)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+                <span>Response: {doc.responseId}</span>
+                {hasRealTx ? (
+                  <EtherscanLink type="tx" value={doc.txHash} className="text-xs text-accent underline-offset-4 hover:underline inline-flex items-center gap-1 font-mono" />
+                ) : (
+                  <span className="font-mono">
+                    Tx: {formatAddress(doc.txHash, 10, 6)} (simulated)
+                  </span>
+                )}
+                <span>{new Date(doc.createdAt).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-border/50 px-5 py-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedId(isExpanded ? null : doc.id)
+                }
+                className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                Status: {doc.statusCode}
-              </span>
+                {isExpanded ? "Hide raw response" : "Show raw response"}
+              </button>
             </div>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-400">
-              <span>Response: {doc.responseId}</span>
-              <span>Tx: {shortenHash(doc.txHash)}</span>
-              <span>
-                {new Date(doc.createdAt).toLocaleString()}
-              </span>
-            </div>
-
-            {geminiParsed && (
-              <pre className="mt-3 overflow-x-auto rounded-md bg-gray-900 p-3 text-xs text-gray-300">
-                {geminiParsed}
-              </pre>
+            {isExpanded && (
+              <div className="border-t border-border/50 px-5 py-4">
+                <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  {gemini
+                    ? JSON.stringify(gemini, null, 2)
+                    : doc.geminiResponse}
+                </pre>
+              </div>
             )}
           </div>
         );
