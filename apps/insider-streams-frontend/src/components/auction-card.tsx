@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { formatDistanceToNowStrict, isPast } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,11 +26,8 @@ import { formatUnits } from "viem";
 import { PredictionMarketLink } from "@/components/prediction-market-link";
 import { cn } from "@/lib/utils";
 import type { PrivateBidRecord } from "@/lib/private-data/types";
-import {
-  getReputationTier,
-  getAccuracyPercent,
-  formatScoreSigned,
-} from "@/lib/reputation";
+import { getReputationTier, getAccuracyPercent, formatScoreSigned } from "@/lib/reputation";
+import { AccuracyBar, ReputationTierBadge } from "@/components/reputation-display";
 
 export type AuctionCardData = {
   auctionId: string;
@@ -165,21 +162,6 @@ function BidModule({ auction }: { auction: AuctionCardData }) {
   );
 }
 
-function AccuracyBar({ correct, wrong }: { correct: number; wrong: number }) {
-  const total = correct + wrong;
-  if (total === 0) return null;
-  const correctPct = (correct / total) * 100;
-
-  return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-rose-500/20">
-      <div
-        className="h-full rounded-full bg-emerald-500/70 transition-all"
-        style={{ width: `${correctPct}%` }}
-      />
-    </div>
-  );
-}
-
 function ReputationBadge({ auction }: { auction: AuctionCardData }) {
   if (auction.sellerReputationScore === undefined) return null;
 
@@ -190,31 +172,12 @@ function ReputationBadge({ auction }: { auction: AuctionCardData }) {
   const tierInfo = getReputationTier(score, total);
   const accuracy = getAccuracyPercent(correct, wrong);
 
-  const ScoreIcon =
-    score > 0 ? TrendingUp : score < 0 ? TrendingDown : Minus;
-
   return (
     <TooltipProvider delayDuration={400}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="relative z-20 inline-flex items-center gap-1.5">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide",
-                tierInfo.badgeBg,
-              )}
-            >
-              <ScoreIcon className="size-3" />
-              {formatScoreSigned(score)}
-            </span>
-            <span
-              className={cn(
-                "text-[10px] font-medium uppercase tracking-[0.18em]",
-                tierInfo.colorClass,
-              )}
-            >
-              {tierInfo.label}
-            </span>
+          <span className="relative z-20">
+            <ReputationTierBadge score={score} totalAuctions={total} size="sm" />
           </span>
         </TooltipTrigger>
         <TooltipContent

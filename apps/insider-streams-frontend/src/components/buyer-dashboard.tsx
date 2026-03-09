@@ -11,10 +11,7 @@ import {
   Gavel,
   Loader2,
   Megaphone,
-  Minus,
   RefreshCw,
-  TrendingDown,
-  TrendingUp,
   Wallet,
 } from "lucide-react";
 import {
@@ -61,11 +58,7 @@ import { getDashboardTabHref } from "@/lib/dashboard-tabs";
 import { useSignedWalletSession } from "@/lib/wallet/use-signed-wallet-session";
 import { formatAddress } from "@/lib/wallet/format-address";
 import { useWalletSession } from "@/lib/wallet/use-wallet-session";
-import {
-  getReputationTier,
-  formatScoreSigned,
-} from "@/lib/reputation";
-import { cn } from "@/lib/utils";
+import { ReputationTierBadge } from "@/components/reputation-display";
 
 const SellerTab = lazy(() => import("@/components/dashboard/seller-tab"));
 
@@ -167,40 +160,6 @@ function AuctionStatusBadge({ status }: { status: string }) {
     return <Badge variant="outline">Cancelled</Badge>;
   }
   return <Badge variant="muted">{status}</Badge>;
-}
-
-function SellerRepInline({
-  score,
-  totalAuctions,
-}: {
-  score: number;
-  totalAuctions: number;
-}) {
-  const tierInfo = getReputationTier(score, totalAuctions);
-  const ScoreIcon =
-    score > 0 ? TrendingUp : score < 0 ? TrendingDown : Minus;
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className={cn(
-          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide",
-          tierInfo.badgeBg,
-        )}
-      >
-        <ScoreIcon className="size-2.5" />
-        {formatScoreSigned(score)}
-      </span>
-      <span
-        className={cn(
-          "text-[10px] font-medium uppercase tracking-[0.14em]",
-          tierInfo.colorClass,
-        )}
-      >
-        {tierInfo.label}
-      </span>
-    </span>
-  );
 }
 
 export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
@@ -652,9 +611,10 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                                 </span>
                               )}
                               {auction.sellerReputationScore !== null ? (
-                                <SellerRepInline
+                                <ReputationTierBadge
                                   score={auction.sellerReputationScore}
                                   totalAuctions={auction.sellerTotalAuctions ?? 0}
+                                  size="sm"
                                 />
                               ) : null}
                             </div>

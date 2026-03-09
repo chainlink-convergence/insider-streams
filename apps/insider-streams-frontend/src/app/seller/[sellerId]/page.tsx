@@ -2,13 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  TrendingDown,
-  TrendingUp,
-  Minus,
-  User,
-} from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,12 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AuctionCard } from "@/components/auction-card";
+import { AccuracyBar, ReputationTierBadge } from "@/components/reputation-display";
 import { getSellerDetail } from "@/lib/seller-detail";
-import {
-  getReputationTier,
-  getAccuracyPercent,
-  formatScoreSigned,
-} from "@/lib/reputation";
+import { getReputationTier, getAccuracyPercent, formatScoreSigned } from "@/lib/reputation";
 import { cn } from "@/lib/utils";
 
 type SellerPageProps = {
@@ -85,14 +76,7 @@ function SellerReputationSidebar({
               <span className="text-muted-foreground">Accuracy</span>
               <span className="font-medium">{accuracy}%</span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-rose-500/20">
-              <div
-                className="h-full rounded-full bg-emerald-500/70 transition-all"
-                style={{
-                  width: `${correct + wrong > 0 ? (correct / (correct + wrong)) * 100 : 0}%`,
-                }}
-              />
-            </div>
+            <AccuracyBar correct={correct} wrong={wrong} className="h-2" />
           </div>
         )}
 
@@ -120,39 +104,6 @@ function SellerReputationSidebar({
   );
 }
 
-function SellerTierBadge({
-  score,
-  totalAuctions,
-}: {
-  score: number;
-  totalAuctions: number;
-}) {
-  const tierInfo = getReputationTier(score, totalAuctions);
-  const ScoreIcon =
-    score > 0 ? TrendingUp : score < 0 ? TrendingDown : Minus;
-
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span
-        className={cn(
-          "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold tracking-wide",
-          tierInfo.badgeBg,
-        )}
-      >
-        <ScoreIcon className="size-3.5" />
-        {formatScoreSigned(score)}
-      </span>
-      <span
-        className={cn(
-          "text-xs font-medium uppercase tracking-[0.16em]",
-          tierInfo.colorClass,
-        )}
-      >
-        {tierInfo.label}
-      </span>
-    </span>
-  );
-}
 
 function StatCard({
   label,
@@ -214,7 +165,7 @@ export default async function SellerPage({ params }: SellerPageProps) {
             <h1 className="min-w-0 break-all font-serif text-[2.4rem] leading-[0.92] font-medium tracking-[-0.04em] text-foreground sm:text-[3rem]">
               {seller.sellerId}
             </h1>
-            <SellerTierBadge
+            <ReputationTierBadge
               score={seller.reputationScore}
               totalAuctions={seller.totalAuctionCount}
             />

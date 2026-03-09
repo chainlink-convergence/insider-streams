@@ -6,9 +6,6 @@ import {
   Clock,
   ExternalLink,
   ShieldCheck,
-  TrendingDown,
-  TrendingUp,
-  Minus,
   User,
 } from "lucide-react";
 
@@ -25,17 +22,13 @@ import {
 } from "@/components/auction-lifecycle-list";
 import { BidHistoryList } from "@/components/bid-history-list";
 import { AuctionBidGate } from "@/components/funding/auction-bid-gate";
+import { AccuracyBar, ReputationTierBadge } from "@/components/reputation-display";
 import {
   getAuctionDetail,
   type AuctionDetailData,
 } from "@/lib/auction-detail";
 import { SECRET_MARKETPLACE_ADDRESS } from "@/lib/contract-addresses";
-import { cn } from "@/lib/utils";
-import {
-  getReputationTier,
-  getAccuracyPercent,
-  formatScoreSigned,
-} from "@/lib/reputation";
+import { getAccuracyPercent } from "@/lib/reputation";
 
 type AuctionDetailPageProps = {
   params: Promise<{
@@ -134,10 +127,7 @@ function SellerReputationCard({
   const total = auction.sellerTotalAuctions ?? 0;
   const correct = auction.sellerCorrectPredictions ?? 0;
   const wrong = auction.sellerWrongPredictions ?? 0;
-  const tierInfo = getReputationTier(score, total);
   const accuracy = getAccuracyPercent(correct, wrong);
-  const ScoreIcon =
-    score > 0 ? TrendingUp : score < 0 ? TrendingDown : Minus;
 
   return (
     <Card className="border-border/70 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_98%,transparent),color-mix(in_srgb,var(--secondary)_18%,transparent))]">
@@ -162,25 +152,7 @@ function SellerReputationCard({
           <Separator className="mb-4" />
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide",
-                    tierInfo.badgeBg,
-                  )}
-                >
-                  <ScoreIcon className="size-3" />
-                  {formatScoreSigned(score)}
-                </span>
-                <span
-                  className={cn(
-                    "text-[11px] font-medium uppercase tracking-[0.16em]",
-                    tierInfo.colorClass,
-                  )}
-                >
-                  {tierInfo.label}
-                </span>
-              </div>
+              <ReputationTierBadge score={score} totalAuctions={total} size="sm" />
               {accuracy !== null && (
                 <span className="text-xs font-medium text-muted-foreground">
                   {accuracy}% accurate
@@ -188,16 +160,7 @@ function SellerReputationCard({
               )}
             </div>
 
-            {(correct > 0 || wrong > 0) && (
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-rose-500/20">
-                <div
-                  className="h-full rounded-full bg-emerald-500/70 transition-all"
-                  style={{
-                    width: `${correct + wrong > 0 ? (correct / (correct + wrong)) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            )}
+            <AccuracyBar correct={correct} wrong={wrong} />
 
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="space-y-0.5">

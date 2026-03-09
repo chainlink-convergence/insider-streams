@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { CONFIDENTIAL_USDC_DECIMALS } from "@private-streams/common";
-import { AlertCircle, Minus, Plus, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertCircle, Plus, RefreshCw } from "lucide-react";
 import { formatUnits } from "viem";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,11 +18,8 @@ import { usePrivateData } from "@/lib/private-data/use-private-data";
 import { subgraphClient } from "@/lib/subgraph-client";
 import { getSdk } from "@/__generated__/sdk";
 import type { SellerDetailQuery } from "@/__generated__/sdk";
-import {
-  getReputationTier,
-  getAccuracyPercent,
-  formatScoreSigned,
-} from "@/lib/reputation";
+import { AccuracyBar, ReputationTierBadge } from "@/components/reputation-display";
+import { getReputationTier, getAccuracyPercent, formatScoreSigned } from "@/lib/reputation";
 import { cn } from "@/lib/utils";
 
 const sdk = getSdk(subgraphClient);
@@ -108,10 +105,8 @@ function ReputationStatCard({
     );
   }
 
-  const tierInfo = getReputationTier(score, totalAuctions);
+  const { scoreColorClass } = getReputationTier(score, totalAuctions);
   const accuracy = getAccuracyPercent(correct, wrong);
-  const ScoreIcon =
-    score > 0 ? TrendingUp : score < 0 ? TrendingDown : Minus;
 
   return (
     <div className="rounded-[calc(var(--radius)-4px)] border border-border/70 bg-muted/24 p-4">
@@ -119,40 +114,23 @@ function ReputationStatCard({
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground/70">
           Reputation
         </p>
-        <span
-          className={cn(
-            "text-[10px] font-medium uppercase tracking-[0.14em]",
-            tierInfo.colorClass,
-          )}
-        >
-          {tierInfo.label}
-        </span>
+        <ReputationTierBadge score={score} totalAuctions={totalAuctions} size="sm" />
       </div>
-      <div className="mt-3 flex items-baseline gap-2">
-        <p
-          className={cn(
-            "font-serif text-[2rem] leading-none tracking-[-0.05em]",
-            tierInfo.scoreColorClass,
-          )}
-        >
-          {formatScoreSigned(score)}
-        </p>
-        <ScoreIcon className={cn("size-4", tierInfo.colorClass)} />
-      </div>
+      <p
+        className={cn(
+          "mt-3 font-serif text-[2rem] leading-none tracking-[-0.05em]",
+          scoreColorClass,
+        )}
+      >
+        {formatScoreSigned(score)}
+      </p>
       {accuracy !== null ? (
         <div className="mt-2 space-y-1">
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-muted-foreground">Accuracy</span>
             <span className="font-medium">{accuracy}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-rose-500/20">
-            <div
-              className="h-full rounded-full bg-emerald-500/70"
-              style={{
-                width: `${correct + wrong > 0 ? (correct / (correct + wrong)) * 100 : 0}%`,
-              }}
-            />
-          </div>
+          <AccuracyBar correct={correct} wrong={wrong} />
         </div>
       ) : (
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
