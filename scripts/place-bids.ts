@@ -44,8 +44,7 @@ import stringify from "fast-json-stable-stringify";
 import { GraphQLClient, gql } from "graphql-request";
 import { createClient } from "@supabase/supabase-js";
 import { privateKeyToAccount } from "viem/accounts";
-import { createWalletClient, http, type Hex } from "viem";
-import { sepolia } from "viem/chains";
+import type { Hex } from "viem";
 import type { Database } from "@private-streams/common";
 import { PRIVATE_CONFIDENTIAL_USDC_ADDRESS } from "@private-streams/common";
 import { PrivateTokenApiClient } from "@private-streams/chainlink-private-token-api-client";
@@ -202,6 +201,10 @@ async function getActiveBid(
   return data ?? null;
 }
 
+// DEBUG ONLY: reads from the Supabase `balances` view which exposes private
+// bid/transfer data. In production, balances are only visible to the user
+// themselves via the frontend. This is acceptable here because the script
+// already reads private_bids and sellers tables directly.
 async function getAvailableBalance(
   supabase: SupabaseClient,
   address: string,
@@ -217,6 +220,31 @@ async function getAvailableBalance(
   } catch {
     return 0n;
   }
+}
+
+/**
+ * Fetch available balances for all given addresses in a single Supabase query.
+ * DEBUG ONLY: reads from the Supabase `balances` view.
+ */
+async function getAvailableBalances(
+  supabase: SupabaseClient,
+  addresses: string[],
+): Promise<Map<string, bigint>> {
+  const { data } = await supabase
+    .from("balances")
+    .select("user_address, available_balance")
+    .in("user_address", addresses);
+  const map = new Map<string, bigint>();
+  if (data) {
+    for (const row of data) {
+      try {
+        map.set(row.user_address, BigInt(row.available_balance));
+      } catch {
+        map.set(row.user_address, 0n);
+      }
+    }
+  }
+  return map;
 }
 
 /**
@@ -248,14 +276,19 @@ async function topUpAccount(
 /**
  * Check every test account and top up those below LOW_BALANCE_THRESHOLD.
  * Called at the start of each cycle so accounts are always ready to bid.
+ * Uses a single batch query to fetch all balances at once.
  */
 async function topUpLowAccounts(
   supabase: SupabaseClient,
   funderClient: PrivateTokenApiClient,
   accounts: { pk: Hex; address: string }[],
 ): Promise<void> {
+  const balances = await getAvailableBalances(
+    supabase,
+    accounts.map((a) => a.address),
+  );
   for (const account of accounts) {
-    const balance = await getAvailableBalance(supabase, account.address);
+    const balance = balances.get(account.address) ?? 0n;
     if (balance < LOW_BALANCE_THRESHOLD) {
       await topUpAccount(funderClient, account.address);
     }
@@ -272,16 +305,10 @@ async function placeBid(
   amount: bigint,
 ): Promise<{ ok: boolean; status: number; body: unknown }> {
   const account = privateKeyToAccount(pk);
-  const walletClient = createWalletClient({
-    account,
-    chain: sepolia,
-    transport: http(),
-  });
 
   const ts = timestamp();
   const payload = { auctionId, amount: amount.toString(), timestamp: ts };
-  const signature = await walletClient.signMessage({
-    account,
+  const signature = await account.signMessage({
     message: stringify(payload),
   });
 
@@ -291,6 +318,7 @@ async function placeBid(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000),
   });
 
   const text = await response.text();
