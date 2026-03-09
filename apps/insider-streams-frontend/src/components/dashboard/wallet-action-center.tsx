@@ -57,6 +57,7 @@ import {
 } from "@/lib/private-token/hooks";
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 import { SwitchNetworkButton } from "@/components/wallet/switch-network-button";
+import { useSignedWalletSession } from "@/lib/wallet/use-signed-wallet-session";
 import { cn } from "@/lib/utils";
 import { useWalletSession } from "@/lib/wallet/use-wallet-session";
 
@@ -160,6 +161,7 @@ export function WalletActionCenter({
   onReveal,
 }: WalletActionCenterProps) {
   const walletSession = useWalletSession();
+  const { canSign } = useSignedWalletSession();
   const { signMessageAsync } = useSignMessage();
   const [step, setStep] = useState<FundingStep>("idle");
   const [walletMode, setWalletMode] = useState<"deposit" | "withdraw">(
@@ -729,15 +731,24 @@ export function WalletActionCenter({
                 variant="accent"
                 className="w-full sm:w-auto"
                 onClick={onReveal}
-                disabled={isRevealing}
+                disabled={isRevealing || !canSign}
               >
-                {isRevealing ? (
+                {isRevealing || !canSign ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <Eye className="size-4" />
                 )}
-                Sign and unlock
+                {isRevealing
+                  ? "Unlocking..."
+                  : canSign
+                    ? "Sign and unlock"
+                    : "Preparing wallet..."}
               </Button>
+              {!canSign ? (
+                <p className="text-xs text-muted-foreground">
+                  Finishing wallet connection. Wait a moment for signing to become available.
+                </p>
+              ) : null}
             </div>
           ) : null}
 

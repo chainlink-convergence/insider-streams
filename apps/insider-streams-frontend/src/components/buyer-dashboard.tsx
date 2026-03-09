@@ -157,7 +157,7 @@ function AuctionStatusBadge({ status }: { status: string }) {
 
 export function BuyerDashboard() {
   const walletSession = useWalletSession();
-  const { getSignedSession } = useSignedWalletSession();
+  const { canSign, getSignedSession } = useSignedWalletSession();
   const {
     isRevealed,
     isLoading: isRevealing,
@@ -251,8 +251,12 @@ export function BuyerDashboard() {
   }, [auctions, dashboardQuery.data]);
 
   const handleReveal = useCallback(() => {
+    if (!canSign) {
+      return;
+    }
+
     void revealForAuctions([]);
-  }, [revealForAuctions]);
+  }, [canSign, revealForAuctions]);
 
   const handleRefresh = useCallback(() => {
     void Promise.allSettled([dashboardQuery.refetch(), fundingSnapshot.refresh()]);
@@ -750,14 +754,18 @@ export function BuyerDashboard() {
                     handleTabChange("wallet");
                     handleReveal();
                   }}
-                  disabled={isRevealing}
+                  disabled={isRevealing || !canSign}
                 >
-                  {isRevealing ? (
+                  {isRevealing || !canSign ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
                     <RefreshCw className="size-4" />
                   )}
-                  Unlock wallet
+                  {isRevealing
+                    ? "Unlocking..."
+                    : canSign
+                      ? "Unlock wallet"
+                      : "Preparing wallet..."}
                 </Button>
               </CardContent>
             </Card>

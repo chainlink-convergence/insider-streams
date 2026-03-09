@@ -81,7 +81,7 @@ function secretsKey(address: string) {
  */
 export function PrivateDataProvider({ children }: { children: ReactNode }) {
   const { address, isConnected } = useAccount();
-  const { getSignedSession } = useSignedWalletSession();
+  const { canSign, getSignedSession } = useSignedWalletSession();
   const queryClient = useQueryClient();
 
   const visibleAuctionsRef = useRef<Map<string, string[]>>(new Map());
@@ -159,6 +159,11 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (!canSign) {
+        setError("Wallet is still connecting. Wait a moment, then try again.");
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
@@ -224,7 +229,7 @@ export function PrivateDataProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [isConnected, address, getSignedSession, queryClient],
+    [isConnected, address, canSign, getSignedSession, queryClient],
   );
 
   // ---- Wallet disconnect + account switch cleanup ----------------------
