@@ -58,6 +58,7 @@ import { getDashboardTabHref } from "@/lib/dashboard-tabs";
 import { useSignedWalletSession } from "@/lib/wallet/use-signed-wallet-session";
 import { formatAddress } from "@/lib/wallet/format-address";
 import { useWalletSession } from "@/lib/wallet/use-wallet-session";
+import { ReputationTierBadge } from "@/components/reputation-display";
 
 const SellerTab = lazy(() => import("@/components/dashboard/seller-tab"));
 
@@ -610,9 +611,11 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                                 </span>
                               )}
                               {auction.sellerReputationScore !== null ? (
-                                <Badge variant="outline">
-                                  Rep {auction.sellerReputationScore}
-                                </Badge>
+                                <ReputationTierBadge
+                                  score={auction.sellerReputationScore}
+                                  totalAuctions={auction.sellerTotalAuctions ?? 0}
+                                  size="sm"
+                                />
                               ) : null}
                             </div>
                             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">

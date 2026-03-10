@@ -22,11 +22,13 @@ import {
 } from "@/components/auction-lifecycle-list";
 import { BidHistoryList } from "@/components/bid-history-list";
 import { AuctionBidGate } from "@/components/funding/auction-bid-gate";
+import { AccuracyBar, ReputationTierBadge } from "@/components/reputation-display";
 import {
   getAuctionDetail,
   type AuctionDetailData,
 } from "@/lib/auction-detail";
 import { SECRET_MARKETPLACE_ADDRESS } from "@/lib/contract-addresses";
+import { getAccuracyPercent } from "@/lib/reputation";
 
 type AuctionDetailPageProps = {
   params: Promise<{
@@ -115,6 +117,80 @@ function Label({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+function SellerReputationCard({
+  auction,
+}: {
+  auction: AuctionDetailData;
+}) {
+  const score = auction.sellerReputationScore ?? 0;
+  const total = auction.sellerTotalAuctions ?? 0;
+  const correct = auction.sellerCorrectPredictions ?? 0;
+  const wrong = auction.sellerWrongPredictions ?? 0;
+  const accuracy = getAccuracyPercent(correct, wrong);
+
+  return (
+    <Card className="border-border/70 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_98%,transparent),color-mix(in_srgb,var(--secondary)_18%,transparent))]">
+      <CardHeader className="gap-4 pb-0">
+        <Label>Seller</Label>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
+            <User className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <Link
+              href={`/seller/${encodeURIComponent(auction.sellerAddress)}`}
+              className="block break-all text-sm font-medium text-foreground transition-colors hover:text-primary"
+            >
+              {auction.sellerAddress}
+            </Link>
+          </div>
+        </div>
+      </CardHeader>
+      {auction.sellerReputationScore !== undefined && (
+        <CardContent>
+          <Separator className="mb-4" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <ReputationTierBadge score={score} totalAuctions={total} size="sm" />
+              {accuracy !== null && (
+                <span className="text-xs font-medium text-muted-foreground">
+                  {accuracy}% accurate
+                </span>
+              )}
+            </div>
+
+            <AccuracyBar correct={correct} wrong={wrong} />
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="space-y-0.5">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">
+                  Correct
+                </p>
+                <p className="text-sm font-medium text-emerald-400">
+                  {correct}
+                </p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">
+                  Wrong
+                </p>
+                <p className="text-sm font-medium text-rose-400">{wrong}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">
+                  Auctions
+                </p>
+                <p className="text-sm font-medium text-foreground">{total}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 
 export const dynamic = "force-dynamic";
 
@@ -261,31 +337,7 @@ export default async function AuctionDetailPage({
               )}
             </Card>
 
-            <Card className="border-border/70 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_98%,transparent),color-mix(in_srgb,var(--secondary)_18%,transparent))]">
-              <CardHeader className="gap-4 pb-0">
-                <Label>Seller</Label>
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
-                    <User className="size-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <Link
-                      href={`/seller/${encodeURIComponent(auction.sellerAddress)}`}
-                      className="block break-all text-sm font-medium text-foreground transition-colors hover:text-primary"
-                    >
-                      {auction.sellerAddress}
-                    </Link>
-                    {auction.sellerReputationScore !== undefined && (
-                      <div className="mt-1">
-                        <Badge variant="outline" className="text-[10px]">
-                          Rep: {auction.sellerReputationScore}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
+            <SellerReputationCard auction={auction} />
 
             <Card className="border-border/70 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_98%,transparent),color-mix(in_srgb,var(--secondary)_18%,transparent))]">
               <CardHeader className="pb-0">

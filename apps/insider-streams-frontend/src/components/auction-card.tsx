@@ -26,6 +26,8 @@ import { formatUnits } from "viem";
 import { PredictionMarketLink } from "@/components/prediction-market-link";
 import { cn } from "@/lib/utils";
 import type { PrivateBidRecord } from "@/lib/private-data/types";
+import { getReputationTier, getAccuracyPercent, formatScoreSigned } from "@/lib/reputation";
+import { AccuracyBar, ReputationTierBadge } from "@/components/reputation-display";
 
 export type AuctionCardData = {
   auctionId: string;
@@ -163,40 +165,59 @@ function BidModule({ auction }: { auction: AuctionCardData }) {
 function ReputationBadge({ auction }: { auction: AuctionCardData }) {
   if (auction.sellerReputationScore === undefined) return null;
 
+  const score = auction.sellerReputationScore;
   const correct = auction.sellerCorrectPredictions ?? 0;
   const wrong = auction.sellerWrongPredictions ?? 0;
   const total = auction.sellerTotalAuctions ?? 0;
+  const tierInfo = getReputationTier(score, total);
+  const accuracy = getAccuracyPercent(correct, wrong);
 
   return (
-    <TooltipProvider delayDuration={1000}>
+    <TooltipProvider delayDuration={400}>
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="relative z-20">
-            <Badge variant="outline" className="cursor-default text-[10px]">
-              Rep: {auction.sellerReputationScore}
-            </Badge>
+            <ReputationTierBadge score={score} totalAuctions={total} size="sm" />
           </span>
         </TooltipTrigger>
         <TooltipContent
           side="bottom"
-          className="w-48 space-y-2 bg-popover px-4 py-3 text-popover-foreground shadow-lg"
+          className="w-52 space-y-3 bg-popover px-4 py-3 text-popover-foreground shadow-lg"
         >
-          <p className="text-xs font-medium">Seller reputation</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium">Seller reputation</p>
+            <span
+              className={cn(
+                "text-sm font-semibold",
+                tierInfo.scoreColorClass,
+              )}
+            >
+              {formatScoreSigned(score)}
+            </span>
+          </div>
+          {accuracy !== null && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">Accuracy</span>
+                <span className="font-medium">{accuracy}%</span>
+              </div>
+              <AccuracyBar correct={correct} wrong={wrong} />
+            </div>
+          )}
           <div className="space-y-1 text-[11px]">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Correct</span>
-              <span className="font-medium">{correct}</span>
+              <span className="font-medium text-emerald-400">{correct}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Wrong</span>
-              <span className="font-medium">{wrong}</span>
+              <span className="font-medium text-rose-400">{wrong}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total auctions</span>
               <span className="font-medium">{total}</span>
             </div>
           </div>
-          {/* TODO: Replace with pie chart visualization */}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

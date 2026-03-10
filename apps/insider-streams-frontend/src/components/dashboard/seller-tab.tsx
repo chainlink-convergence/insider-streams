@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { CONFIDENTIAL_USDC_DECIMALS } from "@private-streams/common";
 import { AlertCircle, Plus, RefreshCw } from "lucide-react";
 import { formatUnits } from "viem";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +18,9 @@ import { usePrivateData } from "@/lib/private-data/use-private-data";
 import { subgraphClient } from "@/lib/subgraph-client";
 import { getSdk } from "@/__generated__/sdk";
 import type { SellerDetailQuery } from "@/__generated__/sdk";
+import { AccuracyBar, ReputationTierBadge } from "@/components/reputation-display";
+import { getReputationTier, getAccuracyPercent, formatScoreSigned } from "@/lib/reputation";
+import { cn } from "@/lib/utils";
 
 const sdk = getSdk(subgraphClient);
 
@@ -74,6 +76,69 @@ function mapSellerData(seller: SellerSubgraph) {
       };
     }),
   };
+}
+
+function ReputationStatCard({
+  score,
+  totalAuctions,
+  correct,
+  wrong,
+}: {
+  score: number | null;
+  totalAuctions: number;
+  correct: number;
+  wrong: number;
+}) {
+  if (score === null) {
+    return (
+      <div className="rounded-[calc(var(--radius)-4px)] border border-border/70 bg-muted/24 p-4">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground/70">
+          Reputation
+        </p>
+        <p className="mt-3 font-serif text-[2rem] leading-none tracking-[-0.05em] text-foreground">
+          —
+        </p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Net score from correct and wrong predictions.
+        </p>
+      </div>
+    );
+  }
+
+  const { scoreColorClass } = getReputationTier(score, totalAuctions);
+  const accuracy = getAccuracyPercent(correct, wrong);
+
+  return (
+    <div className="rounded-[calc(var(--radius)-4px)] border border-border/70 bg-muted/24 p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground/70">
+          Reputation
+        </p>
+        <ReputationTierBadge score={score} totalAuctions={totalAuctions} size="sm" />
+      </div>
+      <p
+        className={cn(
+          "mt-3 font-serif text-[2rem] leading-none tracking-[-0.05em]",
+          scoreColorClass,
+        )}
+      >
+        {formatScoreSigned(score)}
+      </p>
+      {accuracy !== null ? (
+        <div className="mt-2 space-y-1">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Accuracy</span>
+            <span className="font-medium">{accuracy}%</span>
+          </div>
+          <AccuracyBar correct={correct} wrong={wrong} />
+        </div>
+      ) : (
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          {correct} correct, {wrong} wrong
+        </p>
+      )}
+    </div>
+  );
 }
 
 function StatCard({
@@ -173,14 +238,11 @@ export default function SellerTab() {
       <div className="space-y-6">
         {/* Stats grid */}
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Reputation"
-            value={detail ? String(detail.reputationScore) : "—"}
-            hint={
-              detail
-                ? `${detail.correctPredictions} correct, ${detail.wrongPredictions} wrong`
-                : "Net score from correct and wrong predictions."
-            }
+          <ReputationStatCard
+            score={detail?.reputationScore ?? null}
+            totalAuctions={detail?.totalAuctionCount ?? 0}
+            correct={detail?.correctPredictions ?? 0}
+            wrong={detail?.wrongPredictions ?? 0}
           />
           <StatCard
             label="Total auctions"
