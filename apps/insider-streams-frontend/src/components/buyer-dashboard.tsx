@@ -39,12 +39,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WalletActionCenter } from "@/components/dashboard/wallet-action-center";
 import { BidModal } from "@/components/funding/bid-modal";
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
@@ -164,7 +159,7 @@ function AuctionStatusBadge({ status }: { status: string }) {
 export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
   const router = useRouter();
   const walletSession = useWalletSession();
-  const { getSignedSession } = useSignedWalletSession();
+  const { canSign, getSignedSession } = useSignedWalletSession();
   const {
     isRevealed,
     isLoading: isRevealing,
@@ -249,7 +244,10 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
 
     return {
       auctionCount: auctions.length,
-      totalBidCount: auctions.reduce((sum, auction) => sum + auction.bids.length, 0),
+      totalBidCount: auctions.reduce(
+        (sum, auction) => sum + auction.bids.length,
+        0,
+      ),
       leadingCount,
       wonCount,
       exposure: formatBidAmount(exposureRaw.toString()),
@@ -257,11 +255,18 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
   }, [auctions, dashboardQuery.data]);
 
   const handleReveal = useCallback(() => {
+    if (!canSign) {
+      return;
+    }
+
     void revealForAuctions([]);
-  }, [revealForAuctions]);
+  }, [canSign, revealForAuctions]);
 
   const handleRefresh = useCallback(() => {
-    void Promise.allSettled([dashboardQuery.refetch(), fundingSnapshot.refresh()]);
+    void Promise.allSettled([
+      dashboardQuery.refetch(),
+      fundingSnapshot.refresh(),
+    ]);
   }, [dashboardQuery, fundingSnapshot]);
 
   const activeAuction = useMemo(
@@ -271,16 +276,19 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
     [activeBidAuctionId, auctions],
   );
 
-  const handleTabChange = useCallback((nextTab: string) => {
-    const normalized =
-      nextTab === "positions"
-        ? "positions"
-        : nextTab === "signals"
-          ? "signals"
-          : "wallet";
-    if (normalized === activeTab) return;
-    router.push(getDashboardTabHref(normalized));
-  }, [activeTab, router]);
+  const handleTabChange = useCallback(
+    (nextTab: string) => {
+      const normalized =
+        nextTab === "positions"
+          ? "positions"
+          : nextTab === "signals"
+            ? "signals"
+            : "wallet";
+      if (normalized === activeTab) return;
+      router.push(getDashboardTabHref(normalized));
+    },
+    [activeTab, router],
+  );
 
   if (!walletSession.isConnected) {
     return (
@@ -293,7 +301,8 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
             Connect once. Manage wallet and positions here.
           </h1>
           <p className="text-[1.04rem] leading-8 text-muted-foreground">
-            The dashboard is now the wallet home for Insider Streams. Deposit, withdraw, and track auction exposure from the same route.
+            The dashboard is now the wallet home for Insider Streams. Deposit,
+            withdraw, and track auction exposure from the same route.
           </p>
         </header>
 
@@ -306,7 +315,8 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
           </CardHeader>
           <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-xl text-sm leading-7 text-muted-foreground">
-              Connect your wallet to reveal the wallet section, fund bidding balance, and load the positions tied to this address.
+              Connect your wallet to reveal the wallet section, fund bidding
+              balance, and load the positions tied to this address.
             </p>
             <ConnectWalletButton className="w-full sm:w-auto" />
           </CardContent>
@@ -326,7 +336,8 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
             Switch to Sepolia to open your wallet dashboard.
           </h1>
           <p className="text-[1.04rem] leading-8 text-muted-foreground">
-            Wallet actions and buyer positions only work on the supported Insider Streams network.
+            Wallet actions and buyer positions only work on the supported
+            Insider Streams network.
           </p>
         </header>
 
@@ -378,7 +389,9 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
 
           <div className="flex items-center gap-3">
             {isRevealed ? (
-              <Badge variant={fundingSnapshot.canPlaceBid ? "secondary" : "outline"}>
+              <Badge
+                variant={fundingSnapshot.canPlaceBid ? "secondary" : "outline"}
+              >
                 {fundingSnapshot.canPlaceBid ? "Ready to bid" : "Setup needed"}
               </Badge>
             ) : null}
@@ -551,16 +564,21 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                                 {auction.status ? (
                                   <AuctionStatusBadge status={auction.status} />
                                 ) : (
-                                  <Badge variant="outline">Details unavailable</Badge>
+                                  <Badge variant="outline">
+                                    Details unavailable
+                                  </Badge>
                                 )}
                                 <BidStateBadge status={latestBid.status} />
                                 {auction.predictionOutcome !== null ? (
-                                  <Badge variant="outline">Market settled</Badge>
+                                  <Badge variant="outline">
+                                    Market settled
+                                  </Badge>
                                 ) : null}
                               </div>
                               <div>
                                 <CardTitle className="text-[2.35rem] leading-[0.94]">
-                                  {auction.title ?? `Auction #${auction.auctionId}`}
+                                  {auction.title ??
+                                    `Auction #${auction.auctionId}`}
                                 </CardTitle>
                                 <CardDescription className="mt-2">
                                   {auction.endTime
@@ -584,7 +602,8 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                                   Auto-bet amount
                                 </p>
                                 <p className="mt-2 font-serif text-[1.8rem] leading-none tracking-[-0.05em]">
-                                  {latestBid.status === "active" || latestBid.status === "won"
+                                  {latestBid.status === "active" ||
+                                  latestBid.status === "won"
                                     ? formatBidAmount(latestBid.amount)
                                     : "Not winning"}
                                 </p>
@@ -596,7 +615,9 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                         <CardContent className="space-y-5">
                           <div className="flex flex-wrap items-center justify-between gap-4 rounded-[calc(var(--radius)-4px)] border border-border/70 bg-muted/18 px-4 py-3 text-sm">
                             <div className="flex flex-wrap items-center gap-3">
-                              <span className="text-muted-foreground">Seller</span>
+                              <span className="text-muted-foreground">
+                                Seller
+                              </span>
                               {auction.sellerId ? (
                                 <Link
                                   href={`/seller/${encodeURIComponent(auction.sellerId)}`}
@@ -616,7 +637,9 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                               ) : null}
                             </div>
                             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
-                              {auction.marketId ? <span>Market #{auction.marketId}</span> : null}
+                              {auction.marketId ? (
+                                <span>Market #{auction.marketId}</span>
+                              ) : null}
                               <span>Auction #{auction.auctionId}</span>
                               {auction.bidCount !== null ? (
                                 <span>{auction.bidCount} total bids</span>
@@ -644,7 +667,9 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                                 </Link>
                               </Button>
                               <Button
-                                onClick={() => setActiveBidAuctionId(auction.auctionId)}
+                                onClick={() =>
+                                  setActiveBidAuctionId(auction.auctionId)
+                                }
                                 disabled={!canOpenBidModal}
                               >
                                 {actionLabel}
@@ -683,7 +708,10 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                                         <BidStateBadge status={bid.status} />
                                       </div>
                                       <p className="text-xs leading-5 text-muted-foreground">
-                                        {format(parseISO(bid.created_at), "MMM d, yyyy 'at' HH:mm")}
+                                        {format(
+                                          parseISO(bid.created_at),
+                                          "MMM d, yyyy 'at' HH:mm",
+                                        )}
                                       </p>
                                     </div>
                                     <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
@@ -714,24 +742,26 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                   Positions stay hidden until you unlock the wallet.
                 </CardTitle>
                 <CardDescription>
-                  Use the wallet tab to reveal balances and buyer-only auction activity together.
+                  Use the wallet tab to reveal balances and buyer-only auction
+                  activity together.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="max-w-2xl space-y-2 text-sm leading-7 text-muted-foreground">
                   <p>
-                    You will see the auctions you bid on, whether you are winning,
-                    and the full bid trail for each position.
+                    You will see the auctions you bid on, whether you are
+                    winning, and the full bid trail for each position.
                   </p>
                   <p>
-                    Your private wallet balance will also appear after you unlock the wallet tab.
+                    Your private wallet balance will also appear after you
+                    unlock the wallet tab.
                   </p>
                 </div>
                 <Button
                   variant="accent"
                   className="w-full sm:w-auto"
                   onClick={handleReveal}
-                  disabled={isRevealing}
+                  disabled={isRevealing || !canSign}
                 >
                   {isRevealing ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -775,8 +805,8 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
               <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
                   If you have sold signals before, you will see your track
-                  record and every auction you created. Otherwise you can
-                  create your first one from here.
+                  record and every auction you created. Otherwise you can create
+                  your first one from here.
                 </p>
                 <Button
                   variant="accent"
@@ -784,12 +814,16 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
                   onClick={handleReveal}
                   disabled={isRevealing}
                 >
-                  {isRevealing ? (
+                  {isRevealing || !canSign ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
                     <RefreshCw className="size-4" />
                   )}
-                  Unlock wallet
+                  {isRevealing
+                    ? "Unlocking..."
+                    : canSign
+                      ? "Unlock wallet"
+                      : "Preparing wallet..."}
                 </Button>
               </CardContent>
             </Card>
@@ -808,7 +842,10 @@ export function BuyerDashboard({ activeTab }: { activeTab: DashboardTab }) {
         currentBidUsdc={rawUsdcToNumber(activeAuction?.currentBid)}
         availableBalance={fundingSnapshot.balance?.available_balance ?? null}
         onBidSuccess={() => {
-          void Promise.all([dashboardQuery.refetch(), fundingSnapshot.refresh()]);
+          void Promise.all([
+            dashboardQuery.refetch(),
+            fundingSnapshot.refresh(),
+          ]);
         }}
       />
     </div>
