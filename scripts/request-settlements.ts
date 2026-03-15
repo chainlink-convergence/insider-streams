@@ -30,7 +30,7 @@ import {
 
 const RPC_URL =
   process.env.RPC_URL ??
-  "https://eth-sepolia.g.alchemy.com/v2/59LCREaM5uGpTVXZgR8A7z6IiULWjwG6";
+  "https://eth-sepolia.g.alchemy.com/v2/moofctovJenBuWNrpEJugFwHvCXSodiR";
 
 const OWNER_PK = process.env.OWNER_PK;
 if (!OWNER_PK) {
@@ -72,8 +72,8 @@ async function ntfy(title: string, message: string, tags?: string[]) {
 // GraphQL
 // ---------------------------------------------------------------------------
 
-const CLOSED_UNSETTLED_QUERY = gql`
-  query ClosedUnsettledEvents($now: BigInt!) {
+const CLOSED_EVENTS_QUERY = gql`
+  query ClosedEvents($now: BigInt!) {
     eventCreateds(
       where: { eventClose_lt: $now }
       first: 1000
@@ -82,33 +82,60 @@ const CLOSED_UNSETTLED_QUERY = gql`
     ) {
       eventId
       question
-      eventClose
     }
-    settlementRequesteds(first: 1000) {
+  }
+`;
+
+const SETTLEMENT_STATUS_QUERY = gql`
+  query SettlementStatus($ids: [BigInt!]!) {
+    settlementRequesteds(where: { eventId_in: $ids }, first: 1000) {
+      eventId
+    }
+    settlementResponses(where: { eventId_in: $ids }, first: 1000) {
       eventId
     }
   }
 `;
 
-type ClosedUnsettledResponse = {
-  eventCreateds: { eventId: string; question: string; eventClose: string }[];
+type ClosedEventsResponse = {
+  eventCreateds: { eventId: string; question: string }[];
+};
+
+type SettlementStatusResponse = {
   settlementRequesteds: { eventId: string }[];
+  settlementResponses: { eventId: string }[];
 };
 
 async function fetchClosedUnsettledEvents(
   client: GraphQLClient,
 ): Promise<{ eventId: string; question: string }[]> {
   const now = Math.floor(Date.now() / 1000).toString();
-  const data = await client.request<ClosedUnsettledResponse>(
-    CLOSED_UNSETTLED_QUERY,
+
+  // 1. Fetch closed events
+  const { eventCreateds } = await client.request<ClosedEventsResponse>(
+    CLOSED_EVENTS_QUERY,
     { now },
   );
 
-  const requestedIds = new Set(
-    data.settlementRequesteds.map((r) => r.eventId),
+  if (eventCreateds.length === 0) return [];
+
+  // 2. Check settlement status only for those event IDs (avoids first:1000 truncation)
+  const ids = eventCreateds.map((e) => e.eventId);
+  const status = await client.request<SettlementStatusResponse>(
+    SETTLEMENT_STATUS_QUERY,
+    { ids },
   );
 
-  return data.eventCreateds.filter((e) => !requestedIds.has(e.eventId));
+  // Exclude events that already have a settlement request OR a settlement response.
+  // - SettlementRequested: event moved past Open status via requestSettlement()
+  // - SettlementResponse: event is Settled or NeedsManual (covers forceSettle() too,
+  //   which skips SettlementRequested and emits SettlementResponse directly)
+  const excludeIds = new Set([
+    ...status.settlementRequesteds.map((r) => r.eventId),
+    ...status.settlementResponses.map((r) => r.eventId),
+  ]);
+
+  return eventCreateds.filter((e) => !excludeIds.has(e.eventId));
 }
 
 // ---------------------------------------------------------------------------
